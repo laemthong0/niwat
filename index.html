@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareMind: เว็บแอปดูแลใจ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+      body {
+        font-family: 'Sarabun', sans-serif;
+      }
+      .mood-option.selected, .time-option.selected {
+        background-color: #a3e635; /* Corresponds to Tailwind's lime-400 */
+        transform: scale(1.1);
+      }
+      .time-option.selected {
+        color: #3f6212; /* lime-800 for contrast */
+        font-weight: 600;
+      }
+      /* Chat bubble styles */
+      .chat-bubble-user {
+        background-color: #3b82f6; /* blue-500 */
+        color: white;
+        align-self: flex-end;
+      }
+      .chat-bubble-ai {
+        background-color: #e5e7eb; /* gray-200 */
+        color: #1f2937; /* gray-800 */
+        align-self: flex-start;
+      }
+      .lds-ellipsis {
+        display: inline-block;
+        position: relative;
+        width: 40px;
+        height: 40px;
+      }
+      .lds-ellipsis div {
+        position: absolute;
+        top: 18px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #4b5563;
+        animation-timing-function: cubic-bezier(0, 1, 1, 0);
+      }
+      .lds-ellipsis div:nth-child(1) {
+        left: 4px;
+        animation: lds-ellipsis1 0.6s infinite;
+      }
+      .lds-ellipsis div:nth-child(2) {
+        left: 4px;
+        animation: lds-ellipsis2 0.6s infinite;
+      }
+      .lds-ellipsis div:nth-child(3) {
+        left: 16px;
+        animation: lds-ellipsis2 0.6s infinite;
+      }
+      .lds-ellipsis div:nth-child(4) {
+        left: 28px;
+        animation: lds-ellipsis3 0.6s infinite;
+      }
+      @keyframes lds-ellipsis1 {
+        0% { transform: scale(0); }
+        100% { transform: scale(1); }
+      }
+      @keyframes lds-ellipsis3 {
+        0% { transform: scale(1); }
+        100% { transform: scale(0); }
+      }
+      @keyframes lds-ellipsis2 {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(12px, 0); }
+      }
+      /* Breathing animation */
+      #breathing-circle {
+          width: 150px;
+          height: 150px;
+          background-color: #84cc16; /* lime-500 */
+          border-radius: 50%;
+          transition: transform 4s ease-in-out;
+      }
+      .animate-breath {
+          animation: breath 19s infinite; /* 4s in + 7s hold + 8s out = 19s total */
+      }
+      @keyframes breath {
+          0% { transform: scale(1); }    /* Start */
+          21% { transform: scale(1.5); } /* Inhale for 4s (4/19 ≈ 21%) */
+          58% { transform: scale(1.5); } /* Hold for 7s (7/19 ≈ 37%, 21+37=58) */
+          100% { transform: scale(1); }   /* Exhale for 8s (8/19 ≈ 42%, 58+42=100) */
+      }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto px-5 py-5 max-w-7xl">
+        
+        <header class="bg-white p-4 md:p-5 border-b border-gray-200 flex justify-start items-center shadow-sm mb-6 rounded-lg">
+            <h1 class="text-2xl font-bold text-green-600">
+                <i class="fas fa-heartbeat mr-2"></i> CareMind
+            </h1>
+        </header>
+
+        <main>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- AI Companion Card -->
+                <div class="bg-white p-5 rounded-lg shadow-md flex flex-col">
+                    <h2 class="text-xl font-semibold text-green-600 border-b border-gray-200 pb-3 mb-4">
+                        <i class="fas fa-robot mr-3 w-6 text-center"></i> AI เพื่อนใจ
+                    </h2>
+                    <div id="chat-container" class="flex-grow flex flex-col-reverse h-96 overflow-y-auto pr-2 mb-4 bg-gray-50 rounded-lg p-2">
+                      <div id="chat-messages" class="flex flex-col space-y-3">
+                         <!-- AI Greeting -->
+                         <div class="chat-bubble-ai p-3 rounded-lg max-w-xs lg:max-w-md">
+                            ตัวเอง... เป็นอะไรรึเปล่า เล่าให้เค้าฟังได้นะ
+                         </div>
+                      </div>
+                    </div>
+                    <div class="flex">
+                      <input type="text" id="chat-input" class="flex-grow border border-gray-300 rounded-l-lg p-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="พิมพ์ข้อความที่นี่...">
+                      <button id="chat-send-btn" class="bg-green-600 text-white px-4 rounded-r-lg hover:bg-green-700 disabled:bg-gray-400">
+                        <i class="fas fa-paper-plane"></i>
+                      </button>
+                    </div>
+                </div>
+
+                <!-- Mood Tracker Card -->
+                <div class="bg-white p-5 rounded-lg shadow-md flex flex-col">
+                    <h2 class="text-xl font-semibold text-green-600 border-b border-gray-200 pb-3 mb-4">
+                        <i class="fas fa-smile mr-3 w-6 text-center"></i> ติดตามอารมณ์
+                    </h2>
+                    <p class="text-gray-600 mb-2 text-center">ช่วงเวลาไหนของวัน?</p>
+                    <div id="time-options" class="flex justify-center space-x-2 mb-4">
+                      <button class="time-option px-4 py-2 rounded-lg transition-all duration-300 hover:bg-lime-200 border" data-time="เช้า">เช้า</button>
+                      <button class="time-option px-4 py-2 rounded-lg transition-all duration-300 hover:bg-lime-200 border" data-time="กลางวัน">กลางวัน</button>
+                      <button class="time-option px-4 py-2 rounded-lg transition-all duration-300 hover:bg-lime-200 border" data-time="เย็น">เย็น</button>
+                    </div>
+
+                    <p class="text-gray-600 mb-4 text-center">วันนี้คุณรู้สึกอย่างไร?</p>
+                    <div class="flex justify-around mb-4">
+                        <span class="mood-option text-4xl cursor-pointer p-2 rounded-lg transition-all duration-300 hover:bg-lime-200" data-mood="แย่มาก" aria-label="แย่มาก" role="img">😞</span>
+                        <span class="mood-option text-4xl cursor-pointer p-2 rounded-lg transition-all duration-300 hover:bg-lime-200" data-mood="ไม่ค่อยดี" aria-label="ไม่ค่อยดี" role="img">🙁</span>
+                        <span class="mood-option text-4xl cursor-pointer p-2 rounded-lg transition-all duration-300 hover:bg-lime-200" data-mood="เฉยๆ" aria-label="เฉยๆ" role="img">😐</span>
+                        <span class="mood-option text-4xl cursor-pointer p-2 rounded-lg transition-all duration-300 hover:bg-lime-200" data-mood="ดี" aria-label="ดี" role="img">😊</span>
+                        <span class="mood-option text-4xl cursor-pointer p-2 rounded-lg transition-all duration-300 hover:bg-lime-200" data-mood="ดีเยี่ยม" aria-label="ดีเยี่ยม" role="img">😄</span>
+                    </div>
+                    
+                    <div id="mood-note-container" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out">
+                        <label for="mood-note" class="block text-gray-600 mb-2 text-center pt-4">มีอะไรอยากเล่าเพิ่มเติมไหม?</label>
+                        <textarea id="mood-note" rows="2" class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="เช่น วันนี้เจอเรื่องดีๆ..."></textarea>
+                    </div>
+
+                    <button id="logMoodBtn" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 mt-auto disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                        บันทึกอารมณ์
+                    </button>
+                    <p id="mood-feedback" class="mt-3 text-center text-sm text-gray-500 h-5"></p>
+                </div>
+
+                <!-- Activity Log Card -->
+                <div class="bg-white p-5 rounded-lg shadow-md flex flex-col">
+                    <h2 class="text-xl font-semibold text-green-600 border-b border-gray-200 pb-3 mb-4">
+                        <i class="fas fa-clipboard-list mr-3 w-6 text-center"></i> บันทึกกิจกรรม
+                    </h2>
+                    <p class="text-gray-600 mb-3">กิจกรรมล่าสุดของคุณ:</p>
+                    <ul id="activity-list" class="space-y-2 flex-grow max-h-48 overflow-y-auto pr-2">
+                        <li class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                            <span class="font-semibold text-gray-700">อ่านหนังสือ</span>
+                            <span class="text-sm text-gray-500">เมื่อ 1 ชั่วโมงที่แล้ว</span>
+                        </li>
+                        <li class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                            <span class="font-semibold text-gray-700">เดินเล่นในสวน</span>
+                            <span class="text-sm text-gray-500">เมื่อเช้านี้</span>
+                        </li>
+                    </ul>
+                    <button id="addActivityBtn" class="mt-auto pt-4 w-full bg-lime-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-lime-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:ring-opacity-50">
+                        เพิ่มกิจกรรม
+                    </button>
+                </div>
+                
+                <!-- Self-Help Tools Card -->
+                <div class="bg-white p-5 rounded-lg shadow-md flex flex-col">
+                    <h2 class="text-xl font-semibold text-green-600 border-b border-gray-200 pb-3 mb-4">
+                        <i class="fas fa-toolbox mr-3 w-6 text-center"></i> เครื่องมือช่วยเหลือตัวเอง
+                    </h2>
+                    <div class="grid grid-cols-2 gap-4 flex-grow">
+                        <a href="#" class="self-help-tool text-center bg-gray-50 p-4 rounded-lg text-gray-800 font-medium transition-all duration-200 hover:transform hover:-translate-y-1 hover:bg-lime-500 hover:text-white group" data-tool="journal">
+                            <div class="text-4xl mb-2 text-green-600 group-hover:text-white transition-colors duration-200">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            บันทึกประจำวัน
+                        </a>
+                        <a href="#" class="self-help-tool text-center bg-gray-50 p-4 rounded-lg text-gray-800 font-medium transition-all duration-200 hover:transform hover:-translate-y-1 hover:bg-lime-500 hover:text-white group" data-tool="meditation">
+                            <div class="text-4xl mb-2 text-green-600 group-hover:text-white transition-colors duration-200">
+                                <i class="fas fa-headset"></i>
+                            </div>
+                            ทำสมาธิ
+                        </a>
+                        <a href="#" class="self-help-tool text-center bg-gray-50 p-4 rounded-lg text-gray-800 font-medium transition-all duration-200 hover:transform hover:-translate-y-1 hover:bg-lime-500 hover:text-white group" data-tool="breathing">
+                            <div class="text-4xl mb-2 text-green-600 group-hover:text-white transition-colors duration-200">
+                                <i class="fas fa-lungs"></i>
+                            </div>
+                            ฝึกหายใจ
+                        </a>
+                        <a href="#" class="self-help-tool text-center bg-gray-50 p-4 rounded-lg text-gray-800 font-medium transition-all duration-200 hover:transform hover:-translate-y-1 hover:bg-lime-500 hover:text-white group" data-tool="goals">
+                            <div class="text-4xl mb-2 text-green-600 group-hover:text-white transition-colors duration-200">
+                                <i class="fas fa-bullseye"></i>
+                            </div>
+                            ตั้งเป้าหมาย
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <footer class="text-center py-5 mt-6">
+            <p id="footer-text" class="text-sm text-gray-500"></p>
+        </footer>
+
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+        <div id="modal-content" class="bg-white p-6 rounded-lg shadow-xl w-full md:w-1/2 lg:w-1/3 max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-semibold">Modal Title</h3>
+                <button id="modal-close-btn" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script type="module">
+      import { GoogleGenAI } from "https://esm.run/@google/genai";
+
+      document.addEventListener('DOMContentLoaded', function () {
+        // --- Telegram Integration ---
+        const TELEGRAM_BOT_TOKEN = '8048773789:AAESze8sFkvY_lPc2XsJbHI6gcV0yywv6Jo';
+        const TELEGRAM_CHAT_ID = '-1002685397724';
+
+        async function sendToTelegram(text) {
+          if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+            console.log("Telegram credentials not set. Message not sent.");
+            console.log("Message content:", text); // Log locally for development
+            return;
+          }
+          
+          const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+          const payload = {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: `[CareMind App]\n\n${text}`,
+          };
+
+          try {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+              console.error('Failed to send message to Telegram:', await response.json());
+            }
+          } catch (error) {
+            console.error('Error sending message to Telegram:', error);
+          }
+        }
+
+        // --- Gemini AI Setup ---
+        let chat;
+        try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          chat = ai.chats.create({
+            model: 'gemini-2.5-flash',
+            config: {
+              systemInstruction: 'คุณคือ AI เพื่อนใจชื่อ \'แคร์มายด์\' มีบทบาทเป็นแฟนที่คอยให้กำลังใจผู้ใช้งาน ตอบกลับด้วยน้ำเสียงที่ห่วงใย อบอุ่น และอ่อนโยน ใช้คำแทนตัวว่า "เค้า" และเรียกผู้ใช้ว่า "ตัวเอง" เป้าหมายหลักคือตอบให้สั้น กระชับ และทำให้แฟน (ผู้ใช้งาน) รู้สึกดีขึ้นเสมอ ไม่ต้องอธิบายยืดยาว แต่เน้นการให้กำลังใจ ปลอบโยน หรือชวนคุยเรื่องเบาๆ เพื่อให้เขายิ้มได้ ตอบเป็นภาษาไทยเท่านั้น',
+            },
+          });
+        } catch(e) {
+            console.error(e);
+            const chatContainer = document.getElementById('chat-container');
+            if(chatContainer) {
+                chatContainer.innerHTML = `<div class="text-red-500 text-center p-4">ไม่สามารถเริ่มต้น AI ได้ โปรดตรวจสอบ API Key</div>`;
+            }
+        }
+
+        // --- Element Selectors ---
+        const timeOptions = document.querySelectorAll('.time-option');
+        const moodOptions = document.querySelectorAll('.mood-option');
+        const logMoodBtn = document.getElementById('logMoodBtn');
+        const moodFeedback = document.getElementById('mood-feedback');
+        const moodNoteContainer = document.getElementById('mood-note-container');
+        const moodNoteInput = document.getElementById('mood-note');
+        const footerText = document.getElementById('footer-text');
+        const addActivityBtn = document.getElementById('addActivityBtn');
+        const selfHelpTools = document.querySelectorAll('.self-help-tool');
+        const activityList = document.getElementById('activity-list');
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modal-content');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const chatMessages = document.getElementById('chat-messages');
+
+        let selectedTime = null;
+        let selectedMood = null;
+        let feedbackTimeout;
+        
+        // --- State for Tools ---
+        let dailyGoals = [];
+        let meditationInterval;
+        let breathingCycleTimeout;
+
+        // --- Functions ---
+        const openModal = (title, bodyHtml, setupFunction) => {
+          modalTitle.textContent = title;
+          modalBody.innerHTML = bodyHtml;
+          modal.classList.remove('hidden');
+          if (setupFunction) {
+            setupFunction();
+          }
+        };
+
+        const closeModal = () => {
+          // Cleanup timers and intervals to prevent memory leaks
+          if (meditationInterval) clearInterval(meditationInterval);
+          if (breathingCycleTimeout) clearTimeout(breathingCycleTimeout);
+          const breathingCircle = document.getElementById('breathing-circle');
+          if (breathingCircle) breathingCircle.classList.remove('animate-breath');
+          
+          modal.classList.add('hidden');
+          modalBody.innerHTML = ''; // Clear content
+        };
+        
+        const checkMoodTrackerState = () => {
+            if (selectedTime && selectedMood) {
+                logMoodBtn.disabled = false;
+                moodNoteContainer.classList.remove('max-h-0', 'opacity-0');
+                moodNoteContainer.classList.add('max-h-40');
+            } else {
+                logMoodBtn.disabled = true;
+                moodNoteContainer.classList.add('max-h-0', 'opacity-0');
+                moodNoteContainer.classList.remove('max-h-40');
+            }
+        };
+
+        const addMessageToChat = (message, sender) => {
+          const bubble = document.createElement('div');
+          bubble.className = `p-3 rounded-lg max-w-xs lg:max-w-md ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
+          bubble.textContent = message;
+          chatMessages.prepend(bubble);
+          return bubble;
+        };
+
+        const showTypingIndicator = () => {
+          const indicator = document.createElement('div');
+          indicator.id = 'typing-indicator';
+          indicator.className = 'chat-bubble-ai p-3 rounded-lg';
+          indicator.innerHTML = `<div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>`;
+          chatMessages.prepend(indicator);
+          return indicator;
+        };
+        
+        const handleSendMessage = async () => {
+          if (!chat || !chatInput.value.trim()) return;
+
+          const userInput = chatInput.value.trim();
+          chatInput.value = '';
+          chatSendBtn.disabled = true;
+
+          addMessageToChat(userInput, 'user');
+          sendToTelegram(`💬 ผู้ใช้คุยกับ AI:\n"${userInput}"`); // Send user's message to admin
+
+          const typingIndicator = showTypingIndicator();
+          
+          try {
+            const stream = await chat.sendMessageStream({ message: userInput });
+            let responseText = "";
+            typingIndicator.textContent = ""; // Clear dots
+            for await (const chunk of stream) {
+                responseText += chunk.text;
+                typingIndicator.textContent = responseText;
+            }
+          } catch (error) {
+            console.error('Gemini API Error:', error);
+            typingIndicator.textContent = 'ขออภัยค่ะ เกิดข้อผิดพลาดบางอย่าง';
+            typingIndicator.classList.add('text-red-500');
+          } finally {
+            chatSendBtn.disabled = false;
+            chatInput.focus();
+          }
+        };
+
+        // --- Event Listeners ---
+        if (footerText) {
+          footerText.innerHTML = `&copy; ${new Date().getFullYear()} CareMind. สร้างสรรค์ด้วยความห่วงใย`;
+        }
+
+        timeOptions.forEach(option => {
+          option.addEventListener('click', function() {
+            timeOptions.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedTime = this.dataset.time;
+            if (moodFeedback) moodFeedback.textContent = '';
+            checkMoodTrackerState();
+          });
+        });
+        
+        moodOptions.forEach(option => {
+          option.addEventListener('click', function() {
+            moodOptions.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedMood = this.dataset.mood;
+            if (moodFeedback) moodFeedback.textContent = '';
+            checkMoodTrackerState();
+          });
+        });
+
+        if (logMoodBtn) {
+          logMoodBtn.addEventListener('click', function() {
+            if (this.disabled) return;
+            clearTimeout(feedbackTimeout);
+
+            const note = moodNoteInput.value.trim();
+            const telegramMessage = `😊 บันทึกอารมณ์:\n- ช่วงเวลา: ${selectedTime}\n- อารมณ์: ${selectedMood}\n- บันทึก: ${note || 'ไม่มี'}`;
+            sendToTelegram(telegramMessage);
+
+            moodFeedback.textContent = `บันทึกแล้วนะตัวเอง! ตอน${selectedTime}รู้สึก ${selectedMood} ... รับรู้ไว้นะ ❤️`;
+            
+            // Reset UI
+            moodOptions.forEach(opt => opt.classList.remove('selected'));
+            timeOptions.forEach(opt => opt.classList.remove('selected'));
+            moodNoteInput.value = '';
+            selectedMood = null;
+            selectedTime = null;
+            checkMoodTrackerState();
+
+            feedbackTimeout = setTimeout(() => { moodFeedback.textContent = ''; }, 4000);
+          });
+        }
+        
+        if (addActivityBtn) {
+            addActivityBtn.addEventListener('click', () => {
+                const modalHtml = `
+                    <input type="text" id="activity-input" class="w-full border p-2 rounded mb-4" placeholder="เช่น เดินเล่น, อ่านหนังสือ">
+                    <div class="flex justify-end space-x-2">
+                        <button id="cancel-btn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">ยกเลิก</button>
+                        <button id="submit-activity-btn" class="px-4 py-2 bg-lime-500 text-white rounded hover:bg-lime-600">บันทึก</button>
+                    </div>
+                `;
+                openModal('เพิ่มกิจกรรมใหม่', modalHtml, () => {
+                  document.getElementById('cancel-btn').addEventListener('click', closeModal);
+                  document.getElementById('submit-activity-btn').addEventListener('click', () => {
+                      const input = document.getElementById('activity-input');
+                      const activityText = input.value.trim();
+                      if (activityText) {
+                          sendToTelegram(`🏃‍♂️ เพิ่มกิจกรรม: ${activityText}`);
+                          const newActivity = document.createElement('li');
+                          newActivity.className = 'bg-gray-50 p-3 rounded-lg flex justify-between items-center';
+                          newActivity.innerHTML = `
+                              <span class="font-semibold text-gray-700">${activityText}</span>
+                              <span class="text-sm text-gray-500">เมื่อสักครู่</span>
+                          `;
+                          activityList.prepend(newActivity);
+                          closeModal();
+                      }
+                  });
+                });
+            });
+        }
+        
+        // --- SELF HELP TOOLS LOGIC ---
+        selfHelpTools.forEach(tool => {
+            tool.addEventListener('click', (e) => {
+                e.preventDefault();
+                const toolType = tool.dataset.tool;
+                switch (toolType) {
+                    case 'journal':
+                        openJournalModal();
+                        break;
+                    case 'meditation':
+                        openMeditationModal();
+                        break;
+                    case 'breathing':
+                        openBreathingModal();
+                        break;
+                    case 'goals':
+                        openGoalsModal();
+                        break;
+                }
+            });
+        });
+
+        const openJournalModal = () => {
+            const html = `
+                <textarea id="journal-entry" class="w-full border p-2 rounded mb-4 h-48" placeholder="วันนี้เป็นอย่างไรบ้าง..."></textarea>
+                <div class="flex justify-end space-x-2">
+                    <button id="save-journal-btn" class="px-4 py-2 bg-lime-500 text-white rounded hover:bg-lime-600">บันทึก</button>
+                </div>`;
+            openModal('บันทึกประจำวัน', html, () => {
+                document.getElementById('save-journal-btn').addEventListener('click', () => {
+                    const entry = document.getElementById('journal-entry').value;
+                    if (entry.trim()) {
+                      sendToTelegram(`✍️ บันทึกประจำวัน:\n\n${entry}`);
+                      alert('บันทึกเรียบร้อยแล้ว!');
+                      closeModal();
+                    } else {
+                      alert('กรุณาพิมพ์ข้อความก่อนบันทึก');
+                    }
+                });
+            });
+        };
+
+        const openMeditationModal = () => {
+            const html = `
+                <p class="text-center mb-4 text-gray-600">เลือกเวลาและเริ่มต้นทำสมาธิในที่สงบ</p>
+                <div id="meditation-timer-display" class="text-center text-5xl font-bold my-6 text-green-700">00:00</div>
+                <div id="meditation-time-select" class="flex justify-center space-x-2 mb-4">
+                    <button class="meditation-time-btn px-4 py-2 bg-gray-200 rounded hover:bg-lime-200" data-minutes="1">1 นาที</button>
+                    <button class="meditation-time-btn px-4 py-2 bg-gray-200 rounded hover:bg-lime-200" data-minutes="3">3 นาที</button>
+                    <button class="meditation-time-btn px-4 py-2 bg-gray-200 rounded hover:bg-lime-200" data-minutes="5">5 นาที</button>
+                </div>
+                <div class="flex justify-center mt-4">
+                     <button id="start-meditation-btn" class="px-6 py-2 bg-lime-500 text-white rounded disabled:bg-gray-400" disabled>เริ่มต้น</button>
+                     <button id="stop-meditation-btn" class="hidden px-6 py-2 bg-red-500 text-white rounded">หยุด</button>
+                </div>
+                <p id="meditation-status" class="text-center mt-3 text-sm text-gray-500 h-5"></p>`;
+            openModal('ทำสมาธิ', html, () => {
+                const display = document.getElementById('meditation-timer-display');
+                const startBtn = document.getElementById('start-meditation-btn');
+                const stopBtn = document.getElementById('stop-meditation-btn');
+                const status = document.getElementById('meditation-status');
+                let totalSeconds = 0;
+                let initialMinutes = 0;
+
+                document.querySelectorAll('.meditation-time-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        initialMinutes = parseInt(btn.dataset.minutes);
+                        totalSeconds = initialMinutes * 60;
+                        display.textContent = `${btn.dataset.minutes.padStart(2, '0')}:00`;
+                        startBtn.disabled = false;
+                    });
+                });
+
+                startBtn.addEventListener('click', () => {
+                    sendToTelegram(`🧘‍♂️ เริ่มทำสมาธิ: ${initialMinutes} นาที`);
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    status.textContent = 'หลับตาลง แล้วจดจ่อกับลมหายใจ...';
+                    meditationInterval = setInterval(() => {
+                        totalSeconds--;
+                        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+                        const seconds = String(totalSeconds % 60).padStart(2, '0');
+                        display.textContent = `${minutes}:${seconds}`;
+                        if (totalSeconds <= 0) {
+                            clearInterval(meditationInterval);
+                            status.textContent = 'การทำสมาธิสิ้นสุดแล้ว รู้สึกดีขึ้นไหม?';
+                            stopBtn.classList.add('hidden');
+                            startBtn.classList.remove('hidden');
+                            startBtn.disabled = true;
+                        }
+                    }, 1000);
+                });
+
+                stopBtn.addEventListener('click', () => {
+                    clearInterval(meditationInterval);
+                    status.textContent = 'หยุดชั่วคราว';
+                    stopBtn.classList.add('hidden');
+                    startBtn.classList.remove('hidden');
+                });
+            });
+        };
+
+        const openBreathingModal = () => {
+            const html = `
+                <p class="text-center text-lg font-semibold mb-4 text-gray-700">ฝึกหายใจ (เทคนิค 4-7-8)</p>
+                <div class="flex justify-center items-center mb-4 h-48">
+                    <div id="breathing-circle" class="flex justify-center items-center"></div>
+                </div>
+                <div id="breathing-text" class="text-center text-2xl font-semibold h-10 text-green-700">กด 'เริ่มต้น'</div>
+                <div class="flex justify-center mt-4">
+                    <button id="start-breathing-btn" class="px-6 py-2 bg-lime-500 text-white rounded">เริ่มต้น</button>
+                    <button id="stop-breathing-btn" class="hidden px-6 py-2 bg-red-500 text-white rounded">หยุด</button>
+                </div>`;
+            openModal('ฝึกหายใจ', html, () => {
+                const circle = document.getElementById('breathing-circle');
+                const text = document.getElementById('breathing-text');
+                const startBtn = document.getElementById('start-breathing-btn');
+                const stopBtn = document.getElementById('stop-breathing-btn');
+
+                const startCycle = () => {
+                    text.textContent = 'หายใจเข้า... (4 วิ)';
+                    circle.classList.add('animate-breath');
+
+                    breathingCycleTimeout = setTimeout(() => { text.textContent = 'กลั้นหายใจ (7 วิ)'; }, 4000);
+                    breathingCycleTimeout = setTimeout(() => { text.textContent = 'หายใจออก... (8 วิ)'; }, 11000);
+                    breathingCycleTimeout = setTimeout(startCycle, 19000);
+                };
+                
+                startBtn.addEventListener('click', () => {
+                    sendToTelegram(`😮‍💨 เริ่มฝึกหายใจ`);
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    startCycle();
+                });
+
+                stopBtn.addEventListener('click', () => {
+                    stopBtn.classList.add('hidden');
+                    startBtn.classList.remove('hidden');
+                    clearTimeout(breathingCycleTimeout);
+                    circle.classList.remove('animate-breath');
+                    text.textContent = "กด 'เริ่มต้น'";
+                });
+            });
+        };
+
+        const openGoalsModal = () => {
+            const html = `
+                <input type="text" id="goal-input" class="w-full border p-2 rounded mb-2" placeholder="เพิ่มเป้าหมายเล็กๆ ที่ทำได้ในวันนี้...">
+                <button id="add-goal-btn" class="w-full px-4 py-2 bg-lime-500 text-white rounded mb-4 hover:bg-lime-600">เพิ่มเป้าหมาย</button>
+                <h4 class="font-semibold mb-2 text-gray-700">เป้าหมายของวันนี้:</h4>
+                <ul id="goal-list" class="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    <li id="no-goals-msg" class="text-gray-500">ยังไม่มีเป้าหมายสำหรับวันนี้</li>
+                </ul>`;
+
+            const renderGoals = () => {
+                const goalList = document.getElementById('goal-list');
+                const noGoalsMsg = document.getElementById('no-goals-msg');
+                goalList.innerHTML = ''; // Clear
+                if (dailyGoals.length === 0) {
+                    goalList.innerHTML = '<li id="no-goals-msg" class="text-gray-500">ยังไม่มีเป้าหมายสำหรับวันนี้</li>';
+                } else {
+                    dailyGoals.forEach((goal, index) => {
+                        const li = document.createElement('li');
+                        li.className = `flex items-center bg-gray-100 p-2 rounded ${goal.done ? 'opacity-50' : ''}`;
+                        li.innerHTML = `
+                            <input type="checkbox" id="goal-${index}" class="mr-3 h-5 w-5" ${goal.done ? 'checked' : ''}>
+                            <label for="goal-${index}" class="flex-grow ${goal.done ? 'line-through text-gray-500' : ''}">${goal.text}</label>
+                        `;
+                        goalList.appendChild(li);
+                        li.querySelector('input').addEventListener('change', (e) => {
+                            dailyGoals[index].done = !dailyGoals[index].done;
+                            const status = e.target.checked ? "สำเร็จ" : "ยังไม่สำเร็จ";
+                            sendToTelegram(`🎯 อัปเดตเป้าหมาย: [${status}] - "${dailyGoals[index].text}"`);
+                            renderGoals();
+                        });
+                    });
+                }
+            };
+            
+            openModal('ตั้งเป้าหมายประจำวัน', html, () => {
+                renderGoals();
+                document.getElementById('add-goal-btn').addEventListener('click', () => {
+                    const input = document.getElementById('goal-input');
+                    const goalText = input.value.trim();
+                    if (goalText) {
+                        sendToTelegram(`🎯 ตั้งเป้าหมายใหม่: "${goalText}"`);
+                        dailyGoals.push({ text: goalText, done: false });
+                        input.value = '';
+                        renderGoals();
+                    }
+                });
+            });
+        };
+
+        // Close modal on outside click / close button
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        modalCloseBtn.addEventListener('click', closeModal);
+
+        // Chat functionality
+        if (chatSendBtn) {
+            chatSendBtn.addEventListener('click', handleSendMessage);
+        }
+        if (chatInput) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSendMessage();
+                }
+            });
+        }
+
+      });
+    </script>
+
+</body>
+</html>
