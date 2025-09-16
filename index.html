@@ -270,7 +270,7 @@
         // --- Gemini AI Setup ---
         let chat;
         try {
-          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const ai = new GoogleGenAI({ apiKey: "AIzaSyBPNiXOEqyzOqysx4RNY5UZforblxU9qyY" });
           chat = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
@@ -281,7 +281,7 @@
             console.error(e);
             const chatContainer = document.getElementById('chat-container');
             if(chatContainer) {
-                chatContainer.innerHTML = `<div class="text-red-500 text-center p-4">ไม่สามารถเริ่มต้น AI ได้ โปรดตรวจสอบ API Key</div>`;
+                chatContainer.innerHTML = `<div class="text-red-500 text-center p-4"><strong>เกิดข้อผิดพลาด:</strong> ไม่สามารถเริ่มต้น AI ได้ เนื่องจากไม่พบ API Key ในสภาพแวดล้อมของแอปพลิเคชัน (process.env.API_KEY)</div>`;
             }
         }
 
