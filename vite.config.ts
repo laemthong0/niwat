@@ -7,8 +7,8 @@ export default defineConfig(({ mode }) => {
     return {
       plugins: [],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.API_KEY': JSON.stringify(env.AIzaSyBPNiXOEqyzOqysx4RNY5UZforblxU9qyY),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.AIzaSyBmWsTdD47QcMsWFWfbRtimPhEzeVtUriU)
       },
       resolve: {
         alias: {
